@@ -1,0 +1,6 @@
+INTERVIEW_PREP.md
+.DS_Store
+bin/
+obj/
+*.o
+data/*.csv

@@ -24,9 +24,11 @@ std::vector<StockRecord> generateSampleData(size_t numRecords) {
         int64_t timestamp = baseTimestamp + (i / symbols.size()) * dayMs;
         
         double open = priceDist(gen);
-        double high = open * (1.0 + (rand() % 5) / 100.0);
-        double low = open * (1.0 - (rand() % 5) / 100.0);
-        double close = low + (rand() % static_cast<int>(high - low + 1));
+        std::uniform_real_distribution<> pctDist(0.0, 0.05);
+        double high = open * (1.0 + pctDist(gen));
+        double low  = open * (1.0 - pctDist(gen));
+        std::uniform_real_distribution<> closeDist(low, high);
+        double close = closeDist(gen);
         int64_t volume = volumeDist(gen);
         
         records.emplace_back(symbol, timestamp, open, high, low, close, volume);
@@ -55,7 +57,7 @@ void printQueryResult(const std::string& queryName, const QueryResult& result) {
 int main() {
     std::cout << "========================================\n";
     std::cout << "  Distributed Time-Series Database\n";
-    std::cout << "  Bloomberg-Level Data Management\n";
+    std::cout << "  High-Performance Data Management\n";
     std::cout << "========================================\n\n";
     
     // Create database with LRU cache

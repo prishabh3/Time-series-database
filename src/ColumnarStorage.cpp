@@ -25,7 +25,12 @@ StockRecord ColumnarStorage::getRecord(size_t index) const {
     if (index >= timestamps.size()) {
         return StockRecord();
     }
-    
+
+    // closes and volumes are cleared during compression; restore them first
+    if (isCompressed) {
+        const_cast<ColumnarStorage*>(this)->decompress();
+    }
+
     return StockRecord(
         symbols[index],
         timestamps[index],
@@ -75,13 +80,16 @@ void ColumnarStorage::compress() {
 
 void ColumnarStorage::decompress() {
     if (!isCompressed) return;
-    
-    // Decompress prices
-    closes = DeltaEncoder::decompress(compressedCloses);
-    
-    // Decompress volumes
+
+    closes  = DeltaEncoder::decompress(compressedCloses);
     volumes = RLEEncoder::decompress(compressedVolumes);
-    
+
+    // Release compressed buffers — data now lives in closes/volumes
+    compressedCloses.clear();
+    compressedCloses.shrink_to_fit();
+    compressedVolumes.clear();
+    compressedVolumes.shrink_to_fit();
+
     isCompressed = false;
 }
 

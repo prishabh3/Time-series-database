@@ -1,11 +1,15 @@
 #include "BloomFilter.h"
 #include <cmath>
 #include <functional>
+#include <stdexcept>
 
 namespace TSDB {
 
 BloomFilter::BloomFilter(size_t bits, size_t hashFuncs)
     : numBits(bits), numHashFunctions(hashFuncs) {
+    if (numBits == 0) {
+        throw std::invalid_argument("BloomFilter: numBits must be > 0");
+    }
     bitArray.resize(numBits, false);
 }
 
@@ -77,10 +81,11 @@ size_t BloomFilter::optimalNumBits(size_t expectedElements, double falsePositive
 }
 
 size_t BloomFilter::optimalNumHashFunctions(size_t numBits, size_t expectedElements) {
-    // k = (m/n) * ln(2)
-    return static_cast<size_t>(
+    // k = (m/n) * ln(2); minimum of 1 to keep the filter functional
+    size_t k = static_cast<size_t>(
         (static_cast<double>(numBits) / expectedElements) * std::log(2)
     );
+    return std::max(k, size_t(1));
 }
 
 } // namespace TSDB
