@@ -3,66 +3,62 @@
 
 #include "StockRecord.h"
 #include "Compression.h"
+#include "TSDBException.h"
 #include <vector>
 #include <string>
 #include <memory>
 
 namespace TSDB {
 
-// Columnar storage: Each attribute stored in separate array
+// Columnar storage: each attribute stored in its own contiguous array.
+// Compression is transparent to callers — getRecord() / getAllRecords()
+// automatically decompress on first access after compress() is called.
 class ColumnarStorage {
 private:
     std::vector<std::string> symbols;
-    std::vector<int64_t> timestamps;
-    std::vector<double> opens;
-    std::vector<double> highs;
-    std::vector<double> lows;
-    std::vector<double> closes;
-    std::vector<int64_t> volumes;
-    
-    // Compressed versions
+    std::vector<int64_t>     timestamps;
+    std::vector<double>      opens;
+    std::vector<double>      highs;
+    std::vector<double>      lows;
+    // Mutable so that const accessors can trigger lazy decompression
+    mutable std::vector<double>   closes;
+    mutable std::vector<int64_t>  volumes;
+
     std::vector<uint8_t> compressedCloses;
     std::vector<uint8_t> compressedVolumes;
-    
-    bool isCompressed;
+
+    mutable bool isCompressed;
     CompressionStats stats;
-    
+
+    // Restore closes/volumes from compressed buffers (called lazily)
+    void decompressInPlace() const;
+
 public:
     ColumnarStorage();
-    
-    // Add record
+
     void addRecord(const StockRecord& record);
-    
-    // Add multiple records
     void addRecords(const std::vector<StockRecord>& records);
-    
-    // Get record by index
+
+    // Returns a fully-populated record; triggers decompression if needed
     StockRecord getRecord(size_t index) const;
-    
-    // Get all records
+
     std::vector<StockRecord> getAllRecords() const;
-    
-    // Get specific column (for efficient analytical queries)
-    const std::vector<double>& getCloses() const { return closes; }
-    const std::vector<int64_t>& getVolumes() const { return volumes; }
+
+    // Column accessors — trigger decompression if needed
+    const std::vector<double>&  getCloses()     const;
+    const std::vector<int64_t>& getVolumes()    const;
     const std::vector<int64_t>& getTimestamps() const { return timestamps; }
-    
-    // Compress data
+
     void compress();
-    
-    // Decompress data
     void decompress();
-    
-    // Get compression stats
+
+    bool compressed() const { return isCompressed; }
+
     CompressionStats getCompressionStats() const { return stats; }
-    
-    // Get size
+
     size_t size() const { return timestamps.size(); }
-    
-    // Get memory usage
     size_t getMemoryUsage() const;
-    
-    // Clear all data
+
     void clear();
 };
 

@@ -13,14 +13,17 @@ BINDIR = bin
 # Include flags
 INCLUDES = -I$(IDIR)
 
-# Source files
-SOURCES = $(wildcard $(SRCDIR)/*.cpp)
+# Source files (exclude main.cpp when building tests)
+SOURCES      = $(wildcard $(SRCDIR)/*.cpp)
+LIB_SOURCES  = $(filter-out $(SRCDIR)/main.cpp, $(SOURCES))
 
 # Object files
-OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
+OBJECTS      = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
+LIB_OBJECTS  = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(LIB_SOURCES))
 
-# Target executable
-TARGET = $(BINDIR)/tsdb_demo
+# Targets
+TARGET       = $(BINDIR)/tsdb_demo
+TEST_TARGET  = $(BINDIR)/tsdb_tests
 
 # Default target
 all: directories $(TARGET)
@@ -37,6 +40,17 @@ $(TARGET): $(OBJECTS)
 
 # Compile
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+
+# Build and run tests
+test: directories $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+$(TEST_TARGET): $(LIB_OBJECTS) $(OBJDIR)/test_main.o
+	$(CXX) $(CXXFLAGS) $^ -o $@
+	@echo "Test build complete: $(TEST_TARGET)"
+
+$(OBJDIR)/test_main.o: tests/test_main.cpp
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Clean
@@ -56,4 +70,4 @@ debug: clean all
 performance: CXXFLAGS = -std=c++17 -Wall -Wextra -O3 -march=native -pthread -DNDEBUG -flto
 performance: clean all
 
-.PHONY: all clean run debug performance directories
+.PHONY: all clean run debug performance test directories
